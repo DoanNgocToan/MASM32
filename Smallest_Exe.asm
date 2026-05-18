@@ -5,10 +5,12 @@ extern MessageBoxA@16:proc
 
 .code
 main:
-    push 0
-    push 0
-    push 0
-    push 0
+    xor eax, eax
+    push eax
+    push eax
+    push eax
+    push eax
     call MessageBoxA@16
+    ret
 end main
 

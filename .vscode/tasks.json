@@ -1,0 +1,69 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "MASM32: Build and Run Console",
+            "type": "shell",
+            "command": "cd /d \"${fileDirname}\" && C:\\masm32\\bin\\ml.exe /c /coff /Cp /Zi /I\"C:\\masm32\\include\" \"${fileBasename}\" && C:\\masm32\\bin\\link.exe /SUBSYSTEM:CONSOLE /LIBPATH:\"C:\\masm32\\lib\" \"${fileBasenameNoExtension}.obj\" && \"${fileBasenameNoExtension}.exe\"",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "options":{
+                "shell":{
+                    "executable": "cmd.exe",
+                    "args": ["/d", "/c"]
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": true,
+                "clear": true
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": ["relative", "${fileDirname}"],
+                "pattern": {
+                    "regexp": "^(.*)\\((\\d+)\\) : (error|warning) (.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "severity": 3,
+                    "message": 4 
+                }
+            }
+        },
+        {
+            "label": "MASM32: Build and Run Window",
+            "type": "shell",
+            "command": "cd /d \"${fileDirname}\" && C:\\masm32\\bin\\ml.exe /c /coff /Cp /Zi /I\"C:\\masm32\\include\" \"${fileBasename}\" && C:\\masm32\\bin\\link.exe /SUBSYSTEM:WINDOWS /LIBPATH:\"C:\\masm32\\lib\" \"${fileBasenameNoExtension}.obj\" && \"${fileBasenameNoExtension}.exe\"",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "options":{
+                "shell":{
+                    "executable": "cmd.exe",
+                    "args": ["/d", "/c"]
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": true,
+                "clear": true
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": ["relative", "${fileDirname}"],
+                "pattern": {
+                    "regexp": "^(.*)\\((\\d+)\\) : (error|warning) (.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "severity": 3,
+                    "message": 4 
+                }
+            }
+        }
+    ]
+}

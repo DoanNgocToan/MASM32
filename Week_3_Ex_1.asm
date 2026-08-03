@@ -52,7 +52,7 @@ ThreadContext ENDS
     lpThreadId   LPDWORD ?
 
     CommandLine LPSTR ?
-    ThreadCtx ThreadContext <?, ?>
+    ThreadCtx ThreadContext <>
 .code
 start:
     invoke InitCommonControlsEx, addr icex
@@ -67,11 +67,10 @@ start:
 InitListView PROC
     LOCAL lvc:LVCOLUMN
 
-    ; invoke SendMessage, hList, LVM_SETEXTENDEDLISTVIEWSTYLE, 0, LVS_EX_FULLROWSELECT
-
     mov lvc.imask, LVCF_TEXT or LVCF_WIDTH
     mov lvc.lx, 350
     mov lvc.pszText, OFFSET szDir
+
     invoke SendMessage, hList, LVM_INSERTCOLUMN, 0, addr lvc
     ret
 InitListView ENDP
@@ -100,18 +99,18 @@ AddItem ENDP
 
 ; FIND ALL FILES
 
-FindAllFiles PROC uses esi eax ebx, lpThreadCtx:DWORD
+FindAllFiles PROC uses esi ebx, lpCurrPath:DWORD, lpThreadCtx:DWORD
     LOCAL fd:WIN32_FIND_DATA
     LOCAL hFind:HANDLE
     LOCAL szSearchPath[260]:BYTE
     LOCAL szFullPath[260]:BYTE
+    LOCAL tmp:DWORD
 
-    push eax
     mov ebx, lpThreadCtx
     assume ebx:PTR ThreadContext
 
-    invoke MessageBox, NULL, [ebx].lpPath, [ebx].lpPath, MB_ICONINFORMATION or MB_OK
-    invoke lstrcpy, addr szSearchPath, [ebx].lpPath
+    invoke lstrcpy, addr szSearchPath, lpCurrPath
+    invoke lstrcat, addr szSearchPath, addr szSlash
     invoke lstrcat, addr szSearchPath, addr szAllFiles
 
     invoke FindFirstFile, addr szSearchPath, addr fd
@@ -119,25 +118,26 @@ FindAllFiles PROC uses esi eax ebx, lpThreadCtx:DWORD
 
     .IF eax != INVALID_HANDLE_VALUE
     _find_loop:
-        cmp DWORD PTR [ebx].fTerminateThread, 1
-        je _find_close
+        test DWORD PTR [ebx].fTerminateThread, 1
+        jnz _find_close
 
         lea esi, fd.cFileName
         cmp byte ptr [esi], '.'
         je _skip_file
 
         ; build full path
-        invoke lstrcpy, addr szFullPath, [ebx].lpPath
+        invoke lstrcpy, addr szFullPath, lpCurrPath
         invoke lstrcat, addr szFullPath, addr szSlash
         invoke lstrcat, addr szFullPath, addr fd.cFileName
 
         mov eax, fd.dwFileAttributes
-        and eax, FILE_ATTRIBUTE_DIRECTORY
+        mov tmp, eax
+        and tmp, FILE_ATTRIBUTE_DIRECTORY
 
-        .IF eax != 0
-            invoke FindAllFiles, addr szFullPath
+        .IF tmp != 0
+            invoke FindAllFiles, addr szFullPath, lpThreadCtx
         .ELSE
-            invoke AddItem, szFullPath, [ebx].rowIdx
+            invoke AddItem, addr szFullPath, [ebx].rowIdx
             inc DWORD PTR [ebx].rowIdx
         .ENDIF
 
@@ -148,18 +148,18 @@ FindAllFiles PROC uses esi eax ebx, lpThreadCtx:DWORD
     _find_close:
         invoke FindClose, hFind
     .ENDIF
-    pop eax
     ret
 FindAllFiles ENDP
 
 
 ; THREAD
 
-ThreadProc PROC lpThreadCtx:DWORD
-    invoke MessageBox, NULL, [ebx].lpPath, [ebx].lpPath, MB_ICONINFORMATION or MB_OK
+ThreadProc PROC uses ebx, lpThreadCtx:DWORD
+    mov ebx, lpThreadCtx
+    assume ebx:PTR ThreadContext
     
-    invoke FindAllFiles, lpThreadCtx
-    mov isRunning, 0
+    invoke FindAllFiles, [ebx].lpPath, lpThreadCtx
+    and isRunning, 0
 
     ; gửi message về main để reset UI
     invoke PostMessage, hWndMain, WM_USER+1, 0, 0
@@ -237,48 +237,70 @@ WndProc PROC hWnd:HWND, uMsg:UINT, wParam:WPARAM, lParam:LPARAM
 
     .ELSEIF uMsg == WM_COMMAND
         mov eax, wParam
+        and eax, 0FFFFh         ; get control ID
+        cmp ax, IDC_BTN
+        jne _not_btn_clicked
 
-        .IF ax == IDC_BTN
-            shr eax, 8
-            cmp al, BN_CLICKED
-            jne _not_btn_clicked
+        mov eax, wParam
+        shr eax, 16             ; get notification code
+        cmp al, BN_CLICKED      
+        jne _not_btn_clicked
 
-            cmp isRunning, 0
-            je _start_thread
-            mov DWORD PTR [ThreadCtx.fTerminateThread], 1
-            
-            invoke SetWindowText, hBtn, addr szStartBtn
-            invoke EnableWindow, hEdit, TRUE
-            ret
+        test isRunning, 1
+        jz _start_thread
+
+        or DWORD PTR [ThreadCtx.fTerminateThread], 1
+        invoke SetWindowText, hBtn, addr szStartBtn
+        invoke EnableWindow, hEdit, TRUE
+        and isRunning, 0
+        ret
 
         _start_thread:
-            mov isRunning, 1
             invoke GetWindowText, hEdit, addr pathBuffer, 260
+            
+            invoke lstrlen, addr pathBuffer
+            cmp eax, 3
+            jz _no_strip
+            jl _invalid_path
 
-            invoke EnableWindow, hEdit, FALSE
-            invoke SetWindowText, hBtn, addr szStopBtn
+            lea ecx, pathBuffer
+            add ecx, eax
+            dec ecx
 
-            invoke SendMessage, hList, LVM_DELETEALLITEMS, 0, 0
+            cmp byte ptr [ecx], '\'
+            jne _no_strip
 
-            mov ThreadCtx.lpPath, OFFSET pathBuffer
-            mov DWORD PTR [ThreadCtx.fTerminateThread], 0
-            mov DWORD PTR [ThreadCtx.rowIdx], 0
+            mov byte ptr [ecx], 0
+            _no_strip:
+                or isRunning, 1
+                invoke EnableWindow, hEdit, FALSE
+                invoke SetWindowText, hBtn, addr szStopBtn
 
-            invoke CreateThread, NULL, 0 ,addr ThreadProc, addr ThreadCtx, 0, lpThreadId
-            mov hThread, eax
+                invoke SendMessage, hList, LVM_DELETEALLITEMS, 0, 0
+                
+                mov ThreadCtx.lpPath, OFFSET pathBuffer
+                and DWORD PTR [ThreadCtx.fTerminateThread], 0
+                and DWORD PTR [ThreadCtx.rowIdx], 0
+
+                invoke CreateThread, NULL, 0 ,addr ThreadProc, addr ThreadCtx, 0, lpThreadId
+                mov hThread, eax
+            _invalid_path:
         _not_btn_clicked:
-        .ENDIF
         
+        ret
     .ELSEIF uMsg == WM_USER+1
         ; thread done
         invoke SetWindowText, hBtn, addr szStartBtn
         invoke EnableWindow, hEdit, TRUE
 
     .ELSEIF uMsg == WM_DESTROY
-        mov isRunning,0
-        invoke WaitForSingleObject, hThread, INFINITE
-        invoke CloseHandle, hThread
+        .IF hThread != NULL
+            and isRunning, 0
+            invoke WaitForSingleObject, hThread, INFINITE
+            invoke CloseHandle, hThread
+        .ENDIF
         invoke PostQuitMessage,0
+        ret
     .ELSE
         invoke DefWindowProc, hWnd, uMsg, wParam, lParam
         ret

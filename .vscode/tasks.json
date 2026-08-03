@@ -9,10 +9,13 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "options":{
-                "shell":{
+            "options": {
+                "shell": {
                     "executable": "cmd.exe",
-                    "args": ["/d", "/c"]
+                    "args": [
+                        "/d",
+                        "/c"
+                    ]
                 }
             },
             "presentation": {
@@ -23,13 +26,16 @@
             },
             "problemMatcher": {
                 "owner": "cpp",
-                "fileLocation": ["relative", "${fileDirname}"],
+                "fileLocation": [
+                    "relative",
+                    "${fileDirname}"
+                ],
                 "pattern": {
                     "regexp": "^(.*)\\((\\d+)\\) : (error|warning) (.*)$",
                     "file": 1,
                     "line": 2,
                     "severity": 3,
-                    "message": 4 
+                    "message": 4
                 }
             }
         },
@@ -41,10 +47,13 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "options":{
-                "shell":{
+            "options": {
+                "shell": {
                     "executable": "cmd.exe",
-                    "args": ["/d", "/c"]
+                    "args": [
+                        "/d",
+                        "/c"
+                    ]
                 }
             },
             "presentation": {
@@ -55,13 +64,16 @@
             },
             "problemMatcher": {
                 "owner": "cpp",
-                "fileLocation": ["relative", "${fileDirname}"],
+                "fileLocation": [
+                    "relative",
+                    "${fileDirname}"
+                ],
                 "pattern": {
                     "regexp": "^(.*)\\((\\d+)\\) : (error|warning) (.*)$",
                     "file": 1,
                     "line": 2,
                     "severity": 3,
-                    "message": 4 
+                    "message": 4
                 }
             }
         }
